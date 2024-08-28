@@ -1,0 +1,51 @@
+version: '3.7'
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev # Ensure you're using the Dockerfile tailored for development
+    ports:
+      - "3500:3500"
+    environment:
+       DB_HOST: db
+       DB_USER: postgres
+       DB_PASSWORD: postgres
+       DB_NAME: ecom
+    volumes:
+      - .:/src # Bind mount the source code for live editing
+    # - /src/vendor # Optional: bind mount to cache dependencies, can be tweaked based on needs
+    networks:
+       - ecom
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:10.4-alpine
+    container_name: ecom-postgres-db
+    restart: always
+    user: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+        POSTGRES_DB: ecom
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+        PGDATA: /var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+       - ecom
+
+volumes:
+  db-data:
+
+networks:
+  ecom:
+    driver: bridge

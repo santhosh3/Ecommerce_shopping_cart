@@ -30,6 +30,6 @@ func (s *APIServer) Run() error {
 	userHandler := user.NewHandler(userStore);
 	userHandler.RegisterRoutes(subRouter);
 
-	log.Println("Listening on port", s.addr)
+	log.Println("App is Listening on port", s.addr)
 	return http.ListenAndServe(s.addr, router)
 }
