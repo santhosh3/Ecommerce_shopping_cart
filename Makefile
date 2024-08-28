@@ -6,7 +6,7 @@ run: build
 
 
 git:
-	@git add -- :!Dockerfile
+	@git add 
 	@git commit -m "$(m)"
 	@git push
 
