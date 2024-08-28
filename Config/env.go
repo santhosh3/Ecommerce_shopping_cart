@@ -24,7 +24,7 @@ func initConfig() Config {
 		PublicHost:             getEnv("PUBLIC_HOST", "http://localhost"),
 		Port:                   getEnv("PORT", "3500"),
 		JWTSecret:              getEnv("JWT_SECRET", "ECOM"),
-		PostgresString:         getEnv("POSTGRES_SQL", "postgresql://postgres:postgres@localhost:5433/postgres?sslmode=disable"),
+		PostgresString:         getEnv("POSTGRES_SQL", "postgresql://postgres:postgres@db:5432/postgres?sslmode=disable"),
 		JWTExpirationInSeconds: getEnvAsInt("JWT_EXPIRATION", 3600*24*7),
 	}
 }

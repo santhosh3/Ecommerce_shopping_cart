@@ -1,50 +1,47 @@
-version: '3'
-services:
+version: '3.7'
 
-  db:
-    image: postgresql
-    container_name: goLang_ecom_db
-    environment:
-       POSTGRES_USER: postgres
-       POSTGRES_PASSWORD: postgres
-       PGDATA: /data/postgres
-    healthcheck:
-      test: ["executable", "arg"]
-      interval: 1m30s
-      timeout: 30s
-      retries: 5
-      start_period: 30s
-    ports:
-      -"5435:5432"
-    volumes:
-      - db:/var/lib/postgresql/data
-    networks:
-      - postgres
-    
-  api:
-    build: 
+services:
+  server:
+    build:
       context: .
-      dockerfile: dockerfile
-    restart: on-failure
-    volumes:
-      - .:/go/src/api
     ports:
       - "3500:3500"
     environment:
        DB_HOST: db
-       DB_USER: root
-       DB_PASSWORD: mypassword
+       DB_USER: postgres
+       DB_PASSWORD: postgres
        DB_NAME: ecom
-    links:
-      - db
-    depends_on:
-      - db
     networks:
-      - postgres
-  
-volumes:
+       - ecom
+    depends_on:
+      db:
+        condition: service_healthy
+
   db:
+    image: postgres:10.4-alpine
+    container_name: ecom-postgres-db
+    restart: always
+    user: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+        POSTGRES_DB: ecom
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+        PGDATA: /var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+       - ecom
+
+volumes:
+  db-data:
 
 networks:
-  postgres:
+  ecom:
     driver: bridge

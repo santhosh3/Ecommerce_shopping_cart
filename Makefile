@@ -8,3 +8,6 @@ git:
 	@git add .
 	@git commit -m "commit_changes"
 	@git push
+
+docker_build:
+	@docker build -t ecom .
