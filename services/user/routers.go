@@ -25,9 +25,9 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/login", h.handleLogin).Methods("POST");
 }
 
-// func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
-// 	//var register types.RegisterUserPayload
-// }
+func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
+	//var register types.RegisterUserPayload
+}
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request)  {
 	var creds types.LoginUser
@@ -43,6 +43,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request)  {
 	if err := utils.Validate.Struct(creds); err != nil {
 		errors := err.(validator.ValidationErrors);
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload: %v",errors))
+		return
 	}
 
 	fmt.Println(creds.Email);

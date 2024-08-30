@@ -21,14 +21,14 @@ var Envs = initConfig()
 func initConfig() Config {
 	godotenv.Load();
 
-	   //localPostgresDB := "postgresql://postgres:postgres@localhost:5435/ecom?sslmode=disable";
-        dockerPostgresDB := "postgresql://postgres:postgres@db:5432/ecom?sslmode=disable";
+	   DB := "postgresql://postgres:postgres@localhost:5433/postgres?sslmode=disable";
+        //DB := "postgresql://postgres:postgres@db:5432/ecom?sslmode=disable";
 
 	return Config{
 		PublicHost:             getEnv("PUBLIC_HOST", "http://localhost"),
-		Port:                   getEnv("PORT", "3500"),
+		Port:                   getEnv("PORT", "3501"),
 		JWTSecret:              getEnv("JWT_SECRET", "ECOM"),
-		PostgresString:         getEnv("POSTGRES_SQL", dockerPostgresDB),
+		PostgresString:         getEnv("POSTGRES_SQL", DB),
 		JWTExpirationInSeconds: getEnvAsInt("JWT_EXPIRATION", 3600*24*7),
 	}
 }

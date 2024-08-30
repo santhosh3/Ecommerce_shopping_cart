@@ -2,13 +2,13 @@ build:
 	@go build -o bin/ecom cmd/main.go
 
 run: build
-	@./bin/ecom
+	@cd bin && ./ecom
 
 
 git:
-	@git add 
+	@git add .
 	@git commit -m "$(m)"
-	@git push
+	@git push origin HEAD:ecom
 
 # make git m="Your commit message here"
 

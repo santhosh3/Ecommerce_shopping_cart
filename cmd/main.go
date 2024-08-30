@@ -1,39 +1,35 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 
-	_ "github.com/lib/pq"
 	"github.com/santhosh3/ECOM/Config"
 	"github.com/santhosh3/ECOM/cmd/api"
+	"github.com/santhosh3/ECOM/database"
+	"github.com/santhosh3/ECOM/models"
+	"gorm.io/gorm"
 )
 
 func main() {
 	//taking psqlString from ENV
-
 	connectionString := config.Envs.PostgresString
 	if len(connectionString) == 0 {
 		log.Fatal("POSTGRES_SQL is not set in .env file")
 	}
 
 	//connecting to postgres DB
-
-	db, err := sql.Open("postgres", connectionString)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	//create the table if it doesn't exist
-	_, err = db.Exec(config.Tables)
+	db, err := database.NewPSQLStorage(connectionString)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	//checking weather it is connected or not.
+	// doing migrations
+	models.DBMigrations(db)
+	
+
+	//checking DB connections
 	initStorage(db)
 
 	//running API server
@@ -43,10 +39,17 @@ func main() {
 	}
 }
 
-func initStorage(db *sql.DB) {
-	err := db.Ping()
+func initStorage(db *gorm.DB) {
+	sqlDB, err := db.DB() // Get the underlying sql.DB object from the GORM DB object
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to get database handle:", err)
 	}
+
+	// Ping the database to check if it's reachable
+	err = sqlDB.Ping()
+	if err != nil {
+		log.Fatal("Failed to connect to the database:", err)
+	}
+
 	log.Println("DB: connected successfully")
 }

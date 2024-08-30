@@ -1,18 +1,19 @@
 package user
 
 import (
-	"database/sql"
+	"errors"
 	"fmt"
 
-	 _ "github.com/lib/pq" // PostgreSQL driver
+	"github.com/santhosh3/ECOM/models"
 	"github.com/santhosh3/ECOM/types"
+	"gorm.io/gorm"
 )
 
 type Store struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
-func NewStore(db *sql.DB) *Store {
+func NewStore(db *gorm.DB) *Store {
 	return &Store{db: db}
 }
 
@@ -20,44 +21,18 @@ func (s *Store) CreateUser(user *types.User) error {
 	return nil
 }
 
-func (s *Store) GetUserByEmail(email string) (*types.User, error) {
-	rows, err := s.db.Query("SELECT * FROM users WHERE email = $1", email)
+func (s *Store) GetUserByEmail(email string) (*models.User, error) {
+	var user models.User
+	// Use GORM's Where method to filter by email and First method to retrieve the first matching record
+	err := s.db.Where("email = ?", email).First(&user).Error
 	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	u := new(types.User)
-	for rows.Next() {
-		u, err = scanRowsIntoUser(rows)
-		if err != nil {
-			return nil, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// If no record is found, return a user not found error
+			return nil, fmt.Errorf("user not found")
 		}
-	}
-
-	if u.ID == 0 {
-		return nil, fmt.Errorf("user not found")
-	}
-
-	return u, nil
-}
-
-func scanRowsIntoUser(rows *sql.Rows) (*types.User, error) {
-	user := new(types.User)
-	err := rows.Scan(
-		&user.ID,
-		&user.FirstName,
-		&user.LastName,
-		&user.Email,
-		&user.Password,
-		&user.ProfileImage,
-		&user.ShippingAddress,
-		&user.BillingAddress,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-	if err != nil {
+		// Return any other errors encountered during the query
 		return nil, err
 	}
-	return user, nil
+	// Return the found user
+	return &user, nil
 }

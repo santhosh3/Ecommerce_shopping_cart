@@ -1,9 +1,13 @@
 package types
 
-import "time"
+import (
+	"time"
+
+	"github.com/santhosh3/ECOM/models"
+)
 
 type UserStore interface {
-	GetUserByEmail(email string) (*User, error)
+	GetUserByEmail(email string) (*models.User, error)
 }
 
 type RegisterUserPayload struct {
@@ -12,10 +16,7 @@ type RegisterUserPayload struct {
 	Email        string `json:"email" validate:"required"`
 	ProfileImage string `json:"image" validate:"required,email"`
 	Password     string `json:"password" validate:"required,min=3,max=130"`
-	Address      struct {
-		ShippingAddress ShippingAddressPayload `json:"shipping_address"`
-		BillingAddress  BillingAddressPayload  `json:"billing_address"`
-	} `json:"address"`
+	PhoneNumber  string `json:"phone" validate:"required"`
 }
 
 type ShippingAddressPayload struct {
@@ -44,7 +45,7 @@ type User struct {
 }
 
 type LoginUser struct {
-	Email    string `json:"email" validate:"required"`
+	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required"`
 }
 
