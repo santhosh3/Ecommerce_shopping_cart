@@ -8,15 +8,26 @@ import (
 
 type UserStore interface {
 	GetUserByEmail(email string) (*models.User, error)
+	CreateUser(userPayload models.User) (*models.User, error)
+	GetUserById(id int16) (*models.User, error)
+	CreateAddress(payload Address) (*models.User,error)
+	DeleteUserById(id uint64) (string, error)
+	UpdateUserById(id uint64, userPayload models.User) (*models.User, error)
+}
+
+
+type Address struct {
+	ShippingAddress models.ShippingAddress `json:"shippingAddress"`
+	BillingAddress  models.BillingAddress  `json:"billingAddress"`
 }
 
 type RegisterUserPayload struct {
-	FirstName    string `json:"firstname" validate:"required"`
-	LastName     string `json:"lastname" validate:"required"`
-	Email        string `json:"email" validate:"required"`
-	ProfileImage string `json:"image" validate:"required,email"`
+	FirstName    string `json:"first_name" validate:"required,min=3,max=130"`
+	LastName     string `json:"last_name" validate:"required,min=3,max=130"`
+	Email        string `json:"email" validate:"required,email"`
+	ProfileImage string `json:"profile_image"`
 	Password     string `json:"password" validate:"required,min=3,max=130"`
-	PhoneNumber  string `json:"phone" validate:"required"`
+	PhoneNumber  string `json:"phone_number" validate:"required"`
 }
 
 type ShippingAddressPayload struct {

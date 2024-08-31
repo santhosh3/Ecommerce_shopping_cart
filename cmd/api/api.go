@@ -26,6 +26,10 @@ func (s *APIServer) Run() error {
 	router :=  mux.NewRouter()
 	subRouter := router.PathPrefix("/api/v1").Subrouter()
 
+	//StaticFiles
+	router.PathPrefix("/api/v1/profile/").Handler(http.StripPrefix("/api/v1/profile/",http.FileServer(http.Dir("./uploads/profiles"))))
+	//http://localhost:3501/api/v1/uploads/1725083805_2.png
+
 	userStore := user.NewStore(s.db);
 	userHandler := user.NewHandler(userStore);
 	userHandler.RegisterRoutes(subRouter);

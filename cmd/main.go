@@ -20,7 +20,7 @@ func main() {
 
 	//connecting to postgres DB
 	db, err := database.NewPSQLStorage(connectionString)
-
+	
 	if err != nil {
 		log.Fatal(err)
 	}
