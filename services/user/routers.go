@@ -37,7 +37,28 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 }
 
 func (h *Handler) ForgetUserPassword(w http.ResponseWriter, r *http.Request) {
-	
+	type ForgetUserPassword struct {
+		email string
+	}
+	var creds ForgetUserPassword
+	if err := utils.ParseJSON(r, &creds); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+	//Checking mail is present on DB or not
+	_, err := h.store.GetUserByEmail(creds.email)
+	if err != nil {
+		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"msg": "Invalid email please register"})
+		return
+	}
+	otp, err := utils.SendOTP(int(config.Envs.SMTPPort), config.Envs.SMTPHost, config.Envs.HostMail,creds.email,config.Envs.HostPassword)
+	if err != nil {
+		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"msg": "Invalid email please register"})
+		return
+	}
+	fmt.Println(otp);
+	//update otp to db
+	//remove otp from db after 5 mins
 }
 
 func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request)  {
