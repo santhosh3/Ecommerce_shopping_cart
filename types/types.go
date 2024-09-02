@@ -12,6 +12,7 @@ type UserStore interface {
 	GetUserById(id int16) (*models.User, error)
 	CreateAddress(payload Address) (*models.User,error)
 	DeleteUserById(id uint64) (string, error)
+	InsertOTP(user models.User, otp string) error
 	UpdateUserById(id uint64, userPayload models.User) (*models.User, error)
 }
 

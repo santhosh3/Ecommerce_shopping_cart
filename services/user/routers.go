@@ -46,7 +46,7 @@ func (h *Handler) ForgetUserPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//Checking mail is present on DB or not
-	_, err := h.store.GetUserByEmail(creds.email)
+	profile, err := h.store.GetUserByEmail(creds.email)
 	if err != nil {
 		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"msg": "Invalid email please register"})
 		return
@@ -56,7 +56,14 @@ func (h *Handler) ForgetUserPassword(w http.ResponseWriter, r *http.Request) {
 		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"msg": "Invalid email please register"})
 		return
 	}
+
+	err = h.store.InsertOTP(*profile, string(otp))
+	if err != nil {
+		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"msg": "Invalid email please register"})
+		return
+	}
 	fmt.Println(otp);
+
 	//update otp to db
 	//remove otp from db after 5 mins
 }

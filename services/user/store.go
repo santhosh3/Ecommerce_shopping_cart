@@ -19,6 +19,14 @@ func NewStore(db *gorm.DB) *Store {
 	return &Store{db: db}
 }
 
+func (s *Store) InsertOTP(user models.User, otp string) error {
+	// Update only the provided fields
+	if err := s.db.Model(&user).Updates(otp).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *Store) UpdateUserById(id uint64, userUpdates models.User) (*models.User, error) {
 	var user models.User
 

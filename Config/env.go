@@ -59,7 +59,7 @@ var Envs = initConfig()
 
 func initConfig() Config {
 	godotenv.Load()
-
+    
 	DB := "postgresql://postgres:postgres@localhost:5433/postgres?sslmode=disable"
 	host := getStringStruct{key: "PUBLIC_HOST", fallback: "http://localhost"}
 	port := getStringStruct{key: "PORT", fallback: "3501"}
