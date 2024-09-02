@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
+	"sync"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -34,42 +36,75 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/profile", auth.WithJWTAuth(h.GetUserById, h.store)).Methods(http.MethodGet)
 	router.HandleFunc("/remove", auth.WithJWTAuth(h.DeleteUserById, h.store)).Methods(http.MethodDelete)
 	router.HandleFunc("/update", auth.WithJWTAuth(h.UpdateUser, h.store)).Methods(http.MethodPut)
+	router.HandleFunc("/forgetPassword", h.ForgetUserPassword).Methods(http.MethodPost)
 }
 
 func (h *Handler) ForgetUserPassword(w http.ResponseWriter, r *http.Request) {
-	type ForgetUserPassword struct {
-		email string
-	}
-	var creds ForgetUserPassword
+	otp := utils.GenerateOTP()
+	var creds types.ForgetUserPassword
 	if err := utils.ParseJSON(r, &creds); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
-	//Checking mail is present on DB or not
-	profile, err := h.store.GetUserByEmail(creds.email)
+
+	// Environment configurations
+	email := creds.Email
+	HostPassword := config.Envs.HostPassword
+	SMTPPort := int(config.Envs.SMTPPort)
+	SMTPHost := config.Envs.SMTPHost
+	HostMail := config.Envs.HostMail
+
+	// Check if the email exists in the DB
+	profile, err := h.store.GetUserByEmail(email)
 	if err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"msg": "Invalid email please register"})
-		return
-	}
-	otp, err := utils.SendOTP(int(config.Envs.SMTPPort), config.Envs.SMTPHost, config.Envs.HostMail,creds.email,config.Envs.HostPassword)
-	if err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"msg": "Invalid email please register"})
+		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"msg": "Invalid email, please register"})
 		return
 	}
 
-	err = h.store.InsertOTP(*profile, string(otp))
-	if err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"msg": "Invalid email please register"})
-		return
-	}
-	fmt.Println(otp);
+	var wg sync.WaitGroup
+	var errChan = make(chan error, 2)
 
-	//update otp to db
-	//remove otp from db after 5 mins
+	// Goroutine 1: Send OTP via email
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := utils.SendOTP(SMTPPort, otp, SMTPHost, HostMail, email, HostPassword); err != nil {
+			errChan <- err
+		}
+	}()
+
+	// Goroutine 2: Insert OTP into DB
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := h.store.InsertOTP(*profile, strconv.Itoa(otp)); err != nil {
+			errChan <- err
+		}
+	}()
+
+	// Goroutine 3: Background OTP Removal after 5 minutes
+	go func() {
+		h.store.RemoveOTP(*profile)
+	}()
+
+	// Wait for the first two goroutines to finish
+	wg.Wait()
+	close(errChan)
+
+	// Handle any errors that occurred in the first two operations
+	for err := range errChan {
+		if err != nil {
+			utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "An error occurred, please try again"})
+			return
+		}
+	}
+
+	// Send success response
+	utils.WriteJSON(w, http.StatusOK, map[string]string{"success": "OTP sent successfully"})
 }
 
-func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request)  {
-	//Taking userId from middleware 
+func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
+	//Taking userId from middleware
 	userID, ok := r.Context().Value(auth.UserKey).(uint64)
 	if !ok {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("userId is missing or of incorrect type"))
@@ -88,7 +123,7 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request)  {
 }
 
 func (h *Handler) shippingAddress(w http.ResponseWriter, r *http.Request) {
-	//Taking userId from middleware 
+	//Taking userId from middleware
 	userID, ok := r.Context().Value(auth.UserKey).(uint64)
 	if !ok {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("user ID is missing or of incorrect type"))
@@ -108,7 +143,7 @@ func (h *Handler) shippingAddress(w http.ResponseWriter, r *http.Request) {
 	}
 	address.ShippingAddress.UserID = userID
 	address.BillingAddress.UserID = userID
-	user, err := h.store.CreateAddress(address);
+	user, err := h.store.CreateAddress(address)
 	if err != nil {
 		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
@@ -117,7 +152,7 @@ func (h *Handler) shippingAddress(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetUserById(w http.ResponseWriter, r *http.Request) {
-	// Taking userId from middleware 
+	// Taking userId from middleware
 	userID, ok := r.Context().Value(auth.UserKey).(uint64)
 	if !ok {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("user ID is missing or of incorrect type"))
@@ -128,11 +163,11 @@ func (h *Handler) GetUserById(w http.ResponseWriter, r *http.Request) {
 		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "register user not found"})
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, user);
+	utils.WriteJSON(w, http.StatusOK, user)
 }
 
-func (h *Handler) DeleteUserById(w http.ResponseWriter, r *http.Request)  {
-	// Taking userId from middleware 
+func (h *Handler) DeleteUserById(w http.ResponseWriter, r *http.Request) {
+	// Taking userId from middleware
 	userID, ok := r.Context().Value(auth.UserKey).(uint64)
 	if !ok {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("user ID is missing or of incorrect type"))
@@ -143,10 +178,8 @@ func (h *Handler) DeleteUserById(w http.ResponseWriter, r *http.Request)  {
 		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Not able to delete user"})
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, map[string]string{"message":msg});
+	utils.WriteJSON(w, http.StatusOK, map[string]string{"message": msg})
 }
-
-
 
 func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 	var user models.User

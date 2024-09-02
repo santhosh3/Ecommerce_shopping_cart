@@ -14,8 +14,12 @@ type UserStore interface {
 	DeleteUserById(id uint64) (string, error)
 	InsertOTP(user models.User, otp string) error
 	UpdateUserById(id uint64, userPayload models.User) (*models.User, error)
+	RemoveOTP(user models.User) error
 }
 
+type ForgetUserPassword struct {
+	Email string `json:"email"`
+}
 
 type Address struct {
 	ShippingAddress models.ShippingAddress `json:"shippingAddress"`

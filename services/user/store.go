@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/santhosh3/ECOM/models"
 	"github.com/santhosh3/ECOM/types"
@@ -19,9 +20,18 @@ func NewStore(db *gorm.DB) *Store {
 	return &Store{db: db}
 }
 
+func (s *Store) RemoveOTP(user models.User) error {
+	time.Sleep(15 * time.Second)
+	if err := s.db.Model(&user).Update("otp",nil).Error; err != nil {
+		return err
+	}
+	return nil
+	
+}
+
 func (s *Store) InsertOTP(user models.User, otp string) error {
-	// Update only the provided fields
-	if err := s.db.Model(&user).Updates(otp).Error; err != nil {
+	// Update the OTP field in the User model
+	if err := s.db.Model(&user).Update("otp", otp).Error; err != nil {
 		return err
 	}
 	return nil

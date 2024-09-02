@@ -60,8 +60,7 @@ func GenerateOTP() int {
 }
 
 
-func SendOTP(smtpPORT int, smtpHost, emailHOST, receiverEMAIL, passwordHOST string) (int, error) {
-	takeOTP := GenerateOTP()
+func SendOTP(smtpPORT, otp int, smtpHost, emailHOST, receiverEMAIL, passwordHOST string) (error) {
 
 	// Create an HTML template for the email body
 	htmlBody := fmt.Sprintf(`
@@ -74,7 +73,7 @@ func SendOTP(smtpPORT int, smtpHost, emailHOST, receiverEMAIL, passwordHOST stri
 				<p>If you did not request a password reset, please ignore this email.</p>
 			</body>
 			</html>
-		`, takeOTP)
+		`, otp)
 
 	// Create a new dialer
 	dialer := gomail.NewDialer(smtpHost, smtpPORT, emailHOST, passwordHOST)
@@ -89,8 +88,8 @@ func SendOTP(smtpPORT int, smtpHost, emailHOST, receiverEMAIL, passwordHOST stri
 	// Send the email
 	if err := dialer.DialAndSend(msg); err != nil {
 		fmt.Println("Failed to send email:", err)
-		return 0, err
+		return err
 	}
 
-	return takeOTP, nil
+	return nil
 }

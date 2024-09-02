@@ -67,7 +67,7 @@ func initConfig() Config {
 	PostgresString := getStringStruct{key: "POSTGRES_SQL", fallback: DB}
 	JWTExpirationInSeconds := getIntStruct{key: "JWT_EXPIRATION", fallback: 3600 * 24 * 7}
 	HostMail := getStringStruct{key: "host_mail", fallback: "santhoshchinna109@outlook.com"}
-	HostPassword := getStringStruct{key: "host_password", fallback: ""}
+	HostPassword := getStringStruct{key: "host_password", fallback: "Chinna@123"}
 	SMTPHost := getStringStruct{key: "SMTP_host", fallback: "smtp.office365.com"}
 	SMTPPort := getIntStruct{key: "SMTP_port", fallback: 587}
 
