@@ -8,15 +8,17 @@ import (
 )
 
 type Config struct {
-	PublicHost             string
-	Port                   string
-	JWTSecret              string
-	JWTExpirationInSeconds int64
-	PostgresString         string
-	HostMail               string
-	HostPassword           string
-	SMTPHost               string
-	SMTPPort               int64
+	PublicHost                    string
+	Port                          string
+	RefreshJWTSecret              string
+	AccessJWTSecret               string
+	PostgresString                string
+	HostMail                      string
+	HostPassword                  string
+	SMTPHost                      string
+	SMTPPort                      int64
+	AccessJWTExpirationInSeconds  int64
+	RefreshJWTExpirationInSeconds int64
 }
 
 type getDataFromEnv interface {
@@ -59,27 +61,31 @@ var Envs = initConfig()
 
 func initConfig() Config {
 	godotenv.Load()
-    
+
 	DB := "postgresql://postgres:postgres@localhost:5433/postgres?sslmode=disable"
 	host := getStringStruct{key: "PUBLIC_HOST", fallback: "http://localhost"}
 	port := getStringStruct{key: "PORT", fallback: "3501"}
-	JWTSecret := getStringStruct{key: "JWT_SECRET", fallback: "ECOM"}
+	AccessJWTSecret := getStringStruct{key: "ACCESS_JWT_SECRET", fallback: "ACCESSTOKEN"}
+	RefreshJWTSecret := getStringStruct{key: "REFRESH_JWT_SECRET", fallback: "REFRESHTOKEN"}
 	PostgresString := getStringStruct{key: "POSTGRES_SQL", fallback: DB}
-	JWTExpirationInSeconds := getIntStruct{key: "JWT_EXPIRATION", fallback: 3600 * 24 * 7}
 	HostMail := getStringStruct{key: "host_mail", fallback: "santhoshchinna109@outlook.com"}
 	HostPassword := getStringStruct{key: "host_password", fallback: ""}
 	SMTPHost := getStringStruct{key: "SMTP_host", fallback: "smtp.office365.com"}
 	SMTPPort := getIntStruct{key: "SMTP_port", fallback: 587}
+	AccessJWTExpirationInSeconds := getIntStruct{key: "ACCESS_JWT_EXPIRATION", fallback: 3600}
+	RefreshJWTExpirationInSeconds := getIntStruct{key: "REFRESH_JWT_EXPIRATION", fallback: 3600 * 24 * 7}
 
 	return Config{
-		PublicHost:             getEnvProd(host).(string),
-		Port:                   getEnvProd(port).(string),
-		JWTSecret:              getEnvProd(JWTSecret).(string),
-		PostgresString:         getEnvProd(PostgresString).(string),
-		JWTExpirationInSeconds: getEnvProd(JWTExpirationInSeconds).(int64),
-		HostMail:               getEnvProd(HostMail).(string),
-		HostPassword:           getEnvProd(HostPassword).(string),
-		SMTPHost:               getEnvProd(SMTPHost).(string),
-		SMTPPort:               getEnvProd(SMTPPort).(int64),
+		PublicHost:                    getEnvProd(host).(string),
+		Port:                          getEnvProd(port).(string),
+		AccessJWTSecret:               getEnvProd(AccessJWTSecret).(string),
+		RefreshJWTSecret:              getEnvProd(RefreshJWTSecret).(string),
+		PostgresString:                getEnvProd(PostgresString).(string),
+		HostMail:                      getEnvProd(HostMail).(string),
+		HostPassword:                  getEnvProd(HostPassword).(string),
+		SMTPHost:                      getEnvProd(SMTPHost).(string),
+		SMTPPort:                      getEnvProd(SMTPPort).(int64),
+		RefreshJWTExpirationInSeconds: getEnvProd(RefreshJWTExpirationInSeconds).(int64),
+		AccessJWTExpirationInSeconds:  getEnvProd(AccessJWTExpirationInSeconds).(int64),
 	}
 }

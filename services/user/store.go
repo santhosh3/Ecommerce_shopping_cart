@@ -15,18 +15,36 @@ type Store struct {
 	db *gorm.DB
 }
 
-
 func NewStore(db *gorm.DB) *Store {
 	return &Store{db: db}
 }
 
-func (s *Store) RemoveOTP(user models.User) error {
-	time.Sleep(15 * time.Second)
-	if err := s.db.Model(&user).Update("otp",nil).Error; err != nil {
+
+
+func (s *Store) LoggingUser(id uint64) error {
+	var user models.User
+	user.ID = uint64(id)
+	if err := s.db.Model(&user).Update("status", true).Error; err != nil {
 		return err
 	}
 	return nil
-	
+}
+
+func (s *Store) LogOutUser(id int16) error {
+	var user models.User
+	user.ID = uint64(id)
+	if err := s.db.Model(&user).Update("status", false).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Store) RemoveOTP(user models.User) error {
+	time.Sleep(15 * time.Second)
+	if err := s.db.Model(&user).Update("otp", nil).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Store) InsertOTP(user models.User, otp string) error {
@@ -54,15 +72,13 @@ func (s *Store) UpdateUserById(id uint64, userUpdates models.User) (*models.User
 	return &user, nil
 }
 
-
 func (s *Store) DeleteUserById(id uint64) (string, error) {
-	err := s.db.Delete(&models.User{ID : id}).Error // Pass a pointer to `user` and handle the error
+	err := s.db.Delete(&models.User{ID: id}).Error // Pass a pointer to `user` and handle the error
 	if err != nil {
 		return "", err
 	}
 	return "User deleted successfully", nil
 }
-
 
 func (s *Store) CreateUser(user models.User) (*models.User, error) {
 	err := s.db.Create(&user).Error
@@ -74,24 +90,24 @@ func (s *Store) CreateUser(user models.User) (*models.User, error) {
 
 func (s *Store) CreateAddress(address types.Address) (*models.User, error) {
 	var wg sync.WaitGroup
-	var errChan = make(chan error,2) // Buffered channel to capture errors
+	var errChan = make(chan error, 2) // Buffered channel to capture errors
 
 	billing := &address.BillingAddress
 	shipping := &address.ShippingAddress
 
 	// Launch goroutine to create ShippingAddress
 	wg.Add(1)
-	go func ()  {
+	go func() {
 		defer wg.Done()
 		if err := s.db.Create(&shipping).Error; err != nil {
 			errChan <- err
-		}	
+		}
 	}()
 
 	// Launch goroutine to create BillingAddress
 	wg.Add(1)
-	go func ()  {
-		defer wg.Done()	
+	go func() {
+		defer wg.Done()
 		if err := s.db.Create(&billing).Error; err != nil {
 			errChan <- err
 		}
@@ -105,7 +121,7 @@ func (s *Store) CreateAddress(address types.Address) (*models.User, error) {
 	if len(errChan) > 0 {
 		return nil, <-errChan
 	}
-	
+
 	var user models.User
 	err := s.db.Preload("ShippingAddress").
 		Preload("BillingAddress").

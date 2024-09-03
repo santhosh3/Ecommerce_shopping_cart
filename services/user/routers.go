@@ -37,6 +37,57 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/remove", auth.WithJWTAuth(h.DeleteUserById, h.store)).Methods(http.MethodDelete)
 	router.HandleFunc("/update", auth.WithJWTAuth(h.UpdateUser, h.store)).Methods(http.MethodPut)
 	router.HandleFunc("/forgetPassword", h.ForgetUserPassword).Methods(http.MethodPost)
+	router.HandleFunc("/generateAccessToken", h.GenerateAccessToken).Methods(http.MethodPost)
+	router.HandleFunc("/logout", h.LogoutUser).Methods(http.MethodDelete)
+}
+
+func (h *Handler) LogoutUser(w http.ResponseWriter, r *http.Request) {
+	var creds types.RefreshTokenPayload
+	if err := utils.ParseJSON(r, &creds); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+	if err := utils.Validate.Struct(creds); err != nil {
+		errors := err.(validator.ValidationErrors)
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload: %v", errors))
+		return
+	}
+	userId, err := auth.VerifyRefreshToken(creds.Token, h.store)
+	if err != nil {
+		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	err = h.store.LogOutUser(int16(userId))
+	if err != nil {
+		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{"error": false, "message": "Logged Out Successfully"})
+}
+
+func (h *Handler) GenerateAccessToken(w http.ResponseWriter, r *http.Request) {
+	var creds types.RefreshTokenPayload
+	if err := utils.ParseJSON(r, &creds); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+	if err := utils.Validate.Struct(creds); err != nil {
+		errors := err.(validator.ValidationErrors)
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload: %v", errors))
+		return
+	}
+	userId, err := auth.VerifyRefreshToken(creds.Token, h.store)
+	if err != nil {
+		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	//secret []byte, userId int, expiration int64
+	accessToken, err := auth.GenerateJWT([]byte(config.Envs.AccessJWTSecret), uint64(userId), config.Envs.AccessJWTExpirationInSeconds)
+	if err != nil {
+		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{"message": "Access Token created successfully", "accessToken": accessToken})
 }
 
 func (h *Handler) ForgetUserPassword(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +108,7 @@ func (h *Handler) ForgetUserPassword(w http.ResponseWriter, r *http.Request) {
 	// Check if the email exists in the DB
 	profile, err := h.store.GetUserByEmail(email)
 	if err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"msg": "Invalid email, please register"})
+		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid email, please register"})
 		return
 	}
 
@@ -173,12 +224,12 @@ func (h *Handler) DeleteUserById(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("user ID is missing or of incorrect type"))
 		return
 	}
-	msg, err := h.store.DeleteUserById(userID)
+	error, err := h.store.DeleteUserById(userID)
 	if err != nil {
 		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Not able to delete user"})
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, map[string]string{"message": msg})
+	utils.WriteJSON(w, http.StatusOK, map[string]string{"message": error})
 }
 
 func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
@@ -206,7 +257,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 	//Checking mail is present on DB or not
 	_, err = h.store.GetUserByEmail(user.Email)
 	if err == nil {
-		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"msg": "Email already exists please try to Login"})
+		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Email already exists please try to Login"})
 		return
 	}
 
@@ -217,7 +268,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 			FirstName:    r.FormValue("first_name"),
 			LastName:     r.FormValue("last_name"),
 			Password:     r.FormValue("password"),
-			ProfileImage: fmt.Sprintf("%s:%s/api/v1/profile/%s", config.Envs.PublicHost, config.Envs.Port, "abc.jpeg"),
+			ProfileImage: fmt.Sprintf("/api/v1/profile/%s", "abc.jpeg"),
 			PhoneNumber:  r.FormValue("phone"),
 			Email:        r.FormValue("email"),
 		}
@@ -255,7 +306,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 			FirstName:    r.FormValue("first_name"),
 			LastName:     r.FormValue("last_name"),
 			Password:     r.FormValue("password"),
-			ProfileImage: fmt.Sprintf("%s:%s/api/v1/profile/%s", config.Envs.PublicHost, config.Envs.Port, fileName),
+			ProfileImage: fmt.Sprintf("/api/v1/profile/%s", fileName),
 			PhoneNumber:  r.FormValue("phone"),
 			Email:        r.FormValue("email"),
 		}
@@ -277,13 +328,12 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secret := []byte(config.Envs.JWTSecret)
-	token, err := auth.CreateJWT(secret, int(Userprofile.ID))
+	accessToken, refreshToken, err := auth.GenerateTokens(Userprofile.ID, h.store)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{"user": Userprofile, "token": token})
+	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{"user": Userprofile, "accessToken": accessToken, "refreshToken": refreshToken})
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -310,11 +360,10 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secret := []byte(config.Envs.JWTSecret)
-	token, err := auth.CreateJWT(secret, int(user.ID))
+	accessToken, refreshToken, err := auth.GenerateTokens(user.ID, h.store)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{"user": user, "token": token})
+	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{"message": "Logged in successfully", "accessToken": accessToken, "refreshToken": refreshToken})
 }

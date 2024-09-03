@@ -13,6 +13,7 @@ type User struct {
 	Password        string            `json:"password" validate:"required,min=8"`
 	PhoneNumber     string            `json:"phone_number" validate:"required,max=15"` 
 	OTP             string            `json:"otp"`
+	Status		 bool
 	ShippingAddress []ShippingAddress `gorm:"foreignKey:UserID"`
 	BillingAddress  []BillingAddress  `gorm:"foreignKey:UserID"`
 	gorm.Model

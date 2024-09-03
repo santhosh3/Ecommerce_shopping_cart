@@ -10,15 +10,21 @@ type UserStore interface {
 	GetUserByEmail(email string) (*models.User, error)
 	CreateUser(userPayload models.User) (*models.User, error)
 	GetUserById(id int16) (*models.User, error)
-	CreateAddress(payload Address) (*models.User,error)
+	CreateAddress(payload Address) (*models.User, error)
 	DeleteUserById(id uint64) (string, error)
 	InsertOTP(user models.User, otp string) error
 	UpdateUserById(id uint64, userPayload models.User) (*models.User, error)
 	RemoveOTP(user models.User) error
+	LogOutUser(id int16) error
+	LoggingUser(id uint64) error
 }
 
 type ForgetUserPassword struct {
-	Email string `json:"email"`
+	Email string `json:"email" validate:"required"`
+}
+
+type RefreshTokenPayload struct {
+	Token string `json:"token"`
 }
 
 type Address struct {
@@ -57,7 +63,7 @@ type User struct {
 	ShippingAddress string    `json:"shippingAddress"`
 	BillingAddress  string    `json:"billingAddress"`
 	CreatedAt       time.Time `json:"createdAt"`
-	UpdatedAt		 time.Time `json:"updatedAt"`
+	UpdatedAt       time.Time `json:"updatedAt"`
 }
 
 type LoginUser struct {
