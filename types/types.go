@@ -27,6 +27,11 @@ type RefreshTokenPayload struct {
 	Token string `json:"token"`
 }
 
+type RateLimitStruct struct {
+	Status string `json:"status"`
+	Body string `json:"body"`
+}
+
 type Address struct {
 	ShippingAddress models.ShippingAddress `json:"shippingAddress"`
 	BillingAddress  models.BillingAddress  `json:"billingAddress"`

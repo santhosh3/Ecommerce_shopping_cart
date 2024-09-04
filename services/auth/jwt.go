@@ -18,20 +18,6 @@ type contextKey string
 
 var UserKey contextKey = "user"
 
-func GenerateAccessToken(userId int) (string, error) {
-	expiration := time.Second * time.Duration(config.Envs.AccessJWTExpirationInSeconds)
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"UserId":    strconv.Itoa(int(userId)),
-		"expiresAt": time.Now().Add(expiration).Unix(),
-	})
-	tokenString, err := token.SignedString([]byte(config.Envs.AccessJWTSecret))
-	if err != nil {
-		return "", err
-	}
-
-	return string(tokenString), err
-}
 
 func GenerateJWT(secret []byte, userId uint64, expiration int64) (string, error) {
 	// Create a new token with claims
