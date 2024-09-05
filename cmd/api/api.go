@@ -4,7 +4,9 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
+	"github.com/santhosh3/ECOM/services/auth"
 	"github.com/santhosh3/ECOM/services/user"
 	"gorm.io/gorm"
 )
@@ -13,17 +15,20 @@ import (
 type APIServer struct {
 	addr string
 	db *gorm.DB
+	rdb *redis.Client
 }
 
-func NewAPIServer(addr string, db *gorm.DB) *APIServer {
+func NewAPIServer(addr string, db *gorm.DB, rdb *redis.Client) *APIServer {
 	return &APIServer{
 		addr: addr,
 		db: db,
+		rdb: rdb,
 	}
 }
 
 func (s *APIServer) Run() error {
 	router :=  mux.NewRouter()
+	router.Use(auth.LoggingMiddleware(s.rdb))
 	subRouter := router.PathPrefix("/api/v1").Subrouter()
 
 	//StaticFiles

@@ -46,7 +46,7 @@ func main() {
 	initStorage(db)
 
 	//running API server
-	server := api.NewAPIServer(fmt.Sprintf(":%s", config.Envs.Port), db)
+	server := api.NewAPIServer(fmt.Sprintf(":%s", config.Envs.Port), db, rdb)
 	if err := server.Run(); err != nil {
 		log.Fatal(err)
 	}

@@ -33,11 +33,11 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/login", h.handleLogin).Methods(http.MethodPost)
 	router.HandleFunc("/register", h.register).Methods(http.MethodPost)
 	router.HandleFunc("/address", auth.WithJWTAuth(h.shippingAddress, h.store)).Methods(http.MethodPost)
-	router.HandleFunc("/profile", auth.PerClientRateLimiter(auth.WithJWTAuth(h.GetUserById, h.store))).Methods(http.MethodGet)
+	router.HandleFunc("/profile", auth.WithJWTAuth(h.GetUserById, h.store)).Methods(http.MethodGet)
 	router.HandleFunc("/remove", auth.WithJWTAuth(h.DeleteUserById, h.store)).Methods(http.MethodDelete)
 	router.HandleFunc("/update", auth.WithJWTAuth(h.UpdateUser, h.store)).Methods(http.MethodPut)
 	router.HandleFunc("/forgetPassword", h.ForgetUserPassword).Methods(http.MethodPost)
-	router.HandleFunc("/generateAccessToken", auth.PerClientRateLimiter(h.GenerateAccessToken)).Methods(http.MethodPost)
+	router.HandleFunc("/generateAccessToken", h.GenerateAccessToken).Methods(http.MethodPost)
 	router.HandleFunc("/logout", h.LogoutUser).Methods(http.MethodDelete)
 }
 
