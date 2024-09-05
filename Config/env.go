@@ -19,6 +19,7 @@ type Config struct {
 	SMTPPort                      int64
 	AccessJWTExpirationInSeconds  int64
 	RefreshJWTExpirationInSeconds int64
+	RedisDB                       string
 }
 
 type getDataFromEnv interface {
@@ -62,7 +63,9 @@ var Envs = initConfig()
 func initConfig() Config {
 	godotenv.Load()
 
+	// DB := postgresql://postgres:postgres@db:5432/postgres?sslmode=disable
 	DB := "postgresql://postgres:postgres@localhost:5433/postgres?sslmode=disable"
+	RedisDB := getStringStruct{key : "REDIS_DB", fallback: "localhost:6379"}
 	host := getStringStruct{key: "PUBLIC_HOST", fallback: "http://localhost"}
 	port := getStringStruct{key: "PORT", fallback: "3501"}
 	AccessJWTSecret := getStringStruct{key: "ACCESS_JWT_SECRET", fallback: "ACCESSTOKEN"}
@@ -87,5 +90,6 @@ func initConfig() Config {
 		SMTPPort:                      getEnvProd(SMTPPort).(int64),
 		RefreshJWTExpirationInSeconds: getEnvProd(RefreshJWTExpirationInSeconds).(int64),
 		AccessJWTExpirationInSeconds:  getEnvProd(AccessJWTExpirationInSeconds).(int64),
+		RedisDB:                       getEnvProd(RedisDB).(string),
 	}
 }
