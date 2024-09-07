@@ -234,6 +234,7 @@ func (h *Handler) DeleteUserById(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 	var user models.User
+	var filePath string
 	err := r.ParseMultipartForm(10 << 20)
 	if err != nil {
 		utils.WriteJSON(w, http.StatusOK, map[string]string{"error": err.Error()})
@@ -279,7 +280,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 
 		//generate unique file name
 		fileName := fmt.Sprintf("%d_%s", time.Now().Unix(), handler.Filename)
-		filePath := filepath.Join(folderPath, fileName)
+		filePath = filepath.Join(folderPath, fileName)
 
 		//Ensure folder exists
 		if _, err := os.Stat(folderPath); os.IsNotExist(err) {
@@ -316,6 +317,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 	hashedPassword, err := auth.HashPassword(user.Password)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
+		os.Remove(filePath)
 		return
 	}
 
@@ -325,15 +327,17 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 	Userprofile, err := h.store.CreateUser(user)
 	if err != nil {
 		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		os.Remove(filePath)
 		return
 	}
 
 	accessToken, refreshToken, err := auth.GenerateTokens(Userprofile.ID, h.store)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
+		os.Remove(filePath)
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{"user": Userprofile, "accessToken": accessToken, "refreshToken": refreshToken})
+	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{"user": Userprofile, "accessToken": accessToken, "refreshToken": refreshToken})
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {

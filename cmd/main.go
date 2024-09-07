@@ -28,7 +28,7 @@ func main() {
 	//taking RedisString from ENV
 	redisString := config.Envs.RedisDB
 	if len(redisString) == 0 {
-		log.Fatal("POSTGRES_SQL is not set in .env file")
+		log.Fatal("Redis DB is not set in .env file")
 	}
 
 	//connecting to redis DB
@@ -39,8 +39,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// doing migrations
-	models.DBMigrations(db)
+	//doing migrations
+	models.DBMigration(db)
 
 	//checking DB connections
 	initStorage(db)

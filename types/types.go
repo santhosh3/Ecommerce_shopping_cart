@@ -89,3 +89,12 @@ type BillingAddress struct {
 	City    string `json:"city"`
 	Pincode string `json:"pincode"`
 }
+
+
+type ProductStore interface {
+	GetAllProducts() ([]*models.Product, error)
+	CreateProduct(product models.Product) (*models.Product, error)
+	GetProductById(id int16) (*models.Product, error)
+	DeleteProductById(id int16) (*models.Product, error)
+	UpdateProductById(id uint64, productUpdate models.Product) (*models.Product, error)
+}

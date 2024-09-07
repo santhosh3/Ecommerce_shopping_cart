@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 	"gopkg.in/gomail.v2"
+	"gorm.io/datatypes"
 )
 
 var Validate = validator.New()
@@ -59,8 +62,7 @@ func GenerateOTP() int {
 	return rand.Intn(900000) + 100000 // Generates a 6-digit OTP
 }
 
-
-func SendOTP(smtpPORT, otp int, smtpHost, emailHOST, receiverEMAIL, passwordHOST string) (error) {
+func SendOTP(smtpPORT, otp int, smtpHost, emailHOST, receiverEMAIL, passwordHOST string) error {
 
 	// Create an HTML template for the email body
 	htmlBody := fmt.Sprintf(`
@@ -92,4 +94,34 @@ func SendOTP(smtpPORT, otp int, smtpHost, emailHOST, receiverEMAIL, passwordHOST
 	}
 
 	return nil
+}
+
+func ConvertStringToFloat(f string) float64 {
+	if s, err := strconv.ParseFloat(f, 32); err == nil {
+		return s
+	}
+	return 0
+}
+
+func ConvertStringToBool(f string) bool {
+	boolValue, err := strconv.ParseBool(f)
+	if err != nil {
+		return false
+	}
+	return boolValue
+}
+
+func ConvertStringToArray(input string) (datatypes.JSON) {
+	// Split the string by commas and trim spaces
+	elements := strings.Split(input, ",")
+	for i := range elements {
+		elements[i] = strings.TrimSpace(elements[i])
+	}
+
+	// Convert to JSON
+	jsonData, err := json.Marshal(elements)
+	if err != nil {
+		return jsonData
+	}
+	return jsonData
 }
