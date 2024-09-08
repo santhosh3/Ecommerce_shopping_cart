@@ -12,7 +12,7 @@ import (
 	"github.com/santhosh3/ECOM/utils"
 )
 
-func LoggingMiddleware(rdb *redis.Client) func(http.Handler) http.Handler {
+func RateLimitingMiddleware(rdb *redis.Client) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Use request context instead of a global context

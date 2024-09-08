@@ -29,7 +29,7 @@ type RefreshTokenPayload struct {
 
 type RateLimitStruct struct {
 	Status string `json:"status"`
-	Body string `json:"body"`
+	Body   string `json:"body"`
 }
 
 type Address struct {
@@ -90,11 +90,11 @@ type BillingAddress struct {
 	Pincode string `json:"pincode"`
 }
 
-
 type ProductStore interface {
 	GetAllProducts() ([]*models.Product, error)
 	CreateProduct(product models.Product) (*models.Product, error)
 	GetProductById(id int16) (*models.Product, error)
 	DeleteProductById(id int16) (*models.Product, error)
 	UpdateProductById(id uint64, productUpdate models.Product) (*models.Product, error)
+	GetFilteredProducts(size, name, priceGreaterThan, priceLessThan, priceSort string) ([]*models.Product, error)
 }

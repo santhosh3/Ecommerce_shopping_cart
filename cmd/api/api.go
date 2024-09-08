@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
+	"github.com/santhosh3/ECOM/database"
 	"github.com/santhosh3/ECOM/services/auth"
 	"github.com/santhosh3/ECOM/services/product"
 	"github.com/santhosh3/ECOM/services/user"
@@ -29,7 +30,8 @@ func NewAPIServer(addr string, db *gorm.DB, rdb *redis.Client) *APIServer {
 
 func (s *APIServer) Run() error {
 	router :=  mux.NewRouter()
-	router.Use(auth.LoggingMiddleware(s.rdb))
+	router.Use(auth.RateLimitingMiddleware(s.rdb))
+	router.Use(database.DBQueryTimeoutMiddleware(s.db))
 	subRouter := router.PathPrefix("/api/v1").Subrouter()
 
 	//StaticFiles for users

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -34,33 +35,31 @@ func (h *Handler) ProductRoutes(router *mux.Router) {
 	router.HandleFunc("/product/{productId}", h.UpdateProductById).Methods(http.MethodPut)
 }
 
-
-
 func (h *Handler) GetAllProducts(w http.ResponseWriter, r *http.Request) {
-	// product, err := h.store.GetAllProducts()
-	// if err != nil {
-	// 	utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("error occured: %v", err))
-	// 	return
-	// }
-	// utils.WriteJSON(w, http.StatusOK, product)
-	// var products []models.Product
-	// queryParams := r.URL.Query()
+	queryParams := r.URL.Query()
 
-	// //Extracting QueryParams
-	// size := queryParams.Get("size")
-	// name := queryParams.Get("name")
-	// priceGreaterThan := queryParams.Get("priceGreaterThan")
-	// priceLesserThan := queryParams.Get("pricrLessThan")
-	// priceSort := queryParams.Get("priceSort")
+	// Extracting query parameters
+	size := queryParams.Get("size")
+	name := queryParams.Get("name")
+	priceGreaterThan := queryParams.Get("priceGreaterThan")
+	priceLessThan := queryParams.Get("priceLessThan")
+	priceSort := queryParams.Get("priceSort")
 
-	// // Validate and filter size
-	// if size != "" {
-	// 	allowedSizes := []string{"S","XL","XXL","M","L","XS","M"}
-	// 	if !contains(allowedSizes,size) {
-	// 		return
-	// 	}
-	// 	fil
-	// }
+	// Validate priceSort
+	if priceSort != "" {
+		if _, err := strconv.Atoi(priceSort); err != nil || (priceSort != "1" && priceSort != "-1") {
+			// http.Error(w, `{"status":false, "message":"please provide 1 or -1"}`, http.StatusBadRequest)
+			// return
+			utils.WriteError(w, http.StatusBadRequest, err)
+		}
+	}
+
+	// Call the store function to fetch products
+	products, err := h.store.GetFilteredProducts( size, name, priceGreaterThan, priceLessThan, priceSort)
+	if err != nil || len(products) == 0 {
+		http.Error(w, `{"status":false, "message":"No product found"}`, http.StatusBadRequest)
+		return
+	}
 }
 
 func (h *Handler) UpdateProductById(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +93,7 @@ func (h *Handler) UpdateProductById(w http.ResponseWriter, r *http.Request) {
 	}
 	productInfo, err := h.store.UpdateProductById(uint64(utils.ConvertStringToFloat(productId)), product)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("failed to update product with ID %s",productId))
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("failed to update product with ID %s", productId))
 		return
 	}
 	utils.WriteJSON(w, http.StatusOK, productInfo)
@@ -106,7 +105,7 @@ func (h *Handler) DeleteProductById(w http.ResponseWriter, r *http.Request) {
 	productId := vars["productId"]
 	_, err := h.store.DeleteProductById(int16(utils.ConvertStringToFloat(productId)))
 	if err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, map[string]error{"error": fmt.Errorf("product not found %s", err)})
+		utils.WriteError(w, http.StatusNotFound, err)
 		return
 	}
 	utils.WriteJSON(w, http.StatusOK, map[string]string{"error": "product got deleted"})
@@ -118,7 +117,7 @@ func (h *Handler) GetProductById(w http.ResponseWriter, r *http.Request) {
 	productId := vars["productId"]
 	product, err := h.store.GetProductById(int16(utils.ConvertStringToFloat(productId)))
 	if err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "product not found"})
+		utils.WriteError(w, http.StatusNotFound, err)
 		return
 	}
 	product.ProductImage = fmt.Sprintf("%s:%s%s", config.Envs.PublicHost, config.Envs.Port, product.ProductImage)
@@ -129,7 +128,7 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	var product models.Product
 	err := r.ParseMultipartForm(10 << 20)
 	if err != nil {
-		utils.WriteJSON(w, http.StatusOK, map[string]string{"error": err.Error()})
+		utils.WriteError(w, http.StatusOK, err)
 		return
 	}
 
@@ -149,6 +148,7 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
+
 	// Create a unique file name and save the file
 	folderPath := "./uploads/products"
 
