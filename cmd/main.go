@@ -6,12 +6,15 @@ import (
 
 	"github.com/santhosh3/ECOM/Config"
 	"github.com/santhosh3/ECOM/cmd/api"
+	"github.com/santhosh3/ECOM/cmd/grpc"
+	"github.com/santhosh3/ECOM/cmd/kafka"
 	"github.com/santhosh3/ECOM/database"
 	"github.com/santhosh3/ECOM/models"
 	"gorm.io/gorm"
 )
 
 func main() {
+
 	//taking psqlString from ENV
 	connectionString := config.Envs.PostgresString
 	if len(connectionString) == 0 {
@@ -33,7 +36,6 @@ func main() {
 
 	//connecting to redis DB
 	rdb, err := database.RedisRateLimit(redisString)
-     fmt.Println(rdb);
 
 	if err != nil {
 		log.Fatal(err)
@@ -44,6 +46,12 @@ func main() {
 
 	//checking DB connections
 	initStorage(db)
+
+	//running GRPC server microservice communication
+	go grpc.StartGRPCServer(db)
+
+	//running kafka for microservice DB operations
+	go kafka.KafaConsumer()
 
 	//running API server
 	server := api.NewAPIServer(fmt.Sprintf(":%s", config.Envs.Port), db, rdb)
@@ -64,5 +72,5 @@ func initStorage(db *gorm.DB) {
 		log.Fatal("Failed to connect to the database:", err)
 	}
 
-	log.Println("DB: connected successfully")
+	log.Println("postgresDB connected successfully")
 }

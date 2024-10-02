@@ -48,16 +48,15 @@ func (h *Handler) GetAllProducts(w http.ResponseWriter, r *http.Request) {
 	// Validate priceSort
 	if priceSort != "" {
 		if _, err := strconv.Atoi(priceSort); err != nil || (priceSort != "1" && priceSort != "-1") {
-			// http.Error(w, `{"status":false, "message":"please provide 1 or -1"}`, http.StatusBadRequest)
-			// return
-			utils.WriteError(w, http.StatusBadRequest, err)
+			utils.WriteJSON(w, http.StatusBadRequest, map[string]interface{}{"status": false, "message": "please provide 1 or -1"})
+			return
 		}
 	}
 
 	// Call the store function to fetch products
-	products, err := h.store.GetFilteredProducts( size, name, priceGreaterThan, priceLessThan, priceSort)
+	products, err := h.store.GetFilteredProducts(size, name, priceGreaterThan, priceLessThan, priceSort)
 	if err != nil || len(products) == 0 {
-		http.Error(w, `{"status":false, "message":"No product found"}`, http.StatusBadRequest)
+		utils.WriteJSON(w, http.StatusBadRequest, map[string]interface{}{"status": false, "message": "No product found"})
 		return
 	}
 }
@@ -140,6 +139,7 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		AvailableSize:  utils.ConvertStringToArray(r.FormValue("available_size")),
 		CurrencyId:     r.FormValue("currency_id"),
 		Installments:   int(utils.ConvertStringToFloat(r.FormValue("installments"))),
+		Quantity:       int(utils.ConvertStringToFloat(r.FormValue("quantity"))),
 	}
 
 	file, handler, err := r.FormFile("product_image")

@@ -1,0 +1,95 @@
+@hostname = http://localhost:3500/api/v1
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySWQiOiI5IiwiZXhwaXJlc0F0IjoxNzI3NTA2OTMwfQ.iBh9uHVyyBSKQ3jU0G3Z566Pld8iKTdGnqyVrnbafa0
+@refreshToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySWQiOiI5IiwiZXhwaXJlc0F0IjoxNzI4MTA3MjkzfQ._-XNa8wUuwsZjsICVmNgKla8Nb3El2dIy2jjyoGBC2Q
+
+###################### Register API #########################
+
+POST {{hostname}}/register
+Content-Type: multipart/form-data; boundary=Boundary
+
+--Boundary
+Content-Disposition: form-data; name="first_name"
+
+chinna
+--Boundary
+Content-Disposition: form-data; name="last_name"
+
+kumar
+--Boundary
+Content-Disposition: form-data; name="phone"
+
+9182543566
+--Boundary
+Content-Disposition: form-data; name="email"
+
+chinna@gmail.com
+--Boundary
+Content-Disposition: form-data; name="password"
+
+123456789
+--Boundary
+Content-Disposition: form-data; name="profile_image"; filename="th.jpeg"
+Content-Type: image/jpeg
+
+< /home/santhosh/Desktop/th.jpeg
+--Boundary--
+
+###################### Login API #########################
+
+POST {{hostname}}/login
+Content-Type: application/json
+
+{
+    "email" : "chinna@gmail.com",
+    "password" : "123456789"
+}
+
+###################### Get User ##########################
+
+GET {{hostname}}/profile
+Authorization: {{accessToken}}
+Content-Type: application/json
+
+##################### Insert Product #####################
+
+POST {{hostname}}/product
+Content-Type: multipart/form-data; boundary=Boundary
+
+--Boundary
+Content-Disposition: form-data; name="title"
+
+flowerbox
+--Boundary
+Content-Disposition: form-data; name="description"
+
+this is good flower box
+--Boundary
+Content-Disposition: form-data; name="price"
+
+100
+--Boundary
+Content-Disposition: form-data; name="is_free_shipping"
+
+true
+--Boundary
+Content-Disposition: form-data; name="currency_id"
+
+indian
+--Boundary
+Content-Disposition: form-data; name="installments"
+
+12
+--Boundary
+Content-Disposition: form-data; name="available_size"
+
+s,m
+--Boundary
+Content-Disposition: form-data; name="quantity"
+
+100
+--Boundary
+Content-Disposition: form-data; name="product_image"; filename="th.jpeg"
+Content-Type: image/jpeg
+
+< /home/santhosh/Desktop/th.jpeg
+--Boundary--

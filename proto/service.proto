@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "./proto";
+
+// Request message for fetching a user
+message UserRequest {
+  string token = 1;
+}
+
+// Response message containing user details
+message UserResponse {
+  int32 id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string email = 4;
+  string profile_image = 5;
+  string phone_number = 6;
+}
+
+// Service definition for User operations
+service UserService {
+  rpc GetUser (UserRequest) returns (UserResponse);
+}
+
+// Request message for fetching a product
+message ProductRequest {
+  int32 id = 1;
+}
+
+// Response message containing product details
+message ProductResponse {
+  int32 quantity = 1;
+  int32 price = 2;
+}
+
+// Service definition for Product operations
+service ProductService {
+  rpc GetProduct (ProductRequest) returns (ProductResponse);
+}

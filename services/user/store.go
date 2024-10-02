@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/santhosh3/ECOM/models"
+	"github.com/santhosh3/ECOM/services/auth"
 	"github.com/santhosh3/ECOM/types"
 	"gorm.io/gorm"
 )
@@ -39,7 +40,60 @@ func (s *Store) withTimeout(query func(db *gorm.DB) error) error {
 	return err
 }
 
+func (s *Store) CheckOTPByEmail(email, otp string) (bool, error) {
+	var user models.User
+	err := s.db.Where("email = ?", email).First(&user).Error
 
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return false, fmt.Errorf("%s", err)
+		}
+		return false, err
+	}
+
+	if user.OTP == otp {
+		return true, nil
+	}
+	return false, fmt.Errorf("otps are not matching")
+}
+
+func (s *Store) GetUserById(id int16) (*models.User, error) {
+	var user models.User
+
+	err := s.withTimeout(func(db *gorm.DB) error {
+		return s.db.First(&user, id).Error
+	})
+
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("%s", err)
+		}
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (s *Store) UpdatePasswordByEmail(email, password string) (string, error) {
+	hashedPassword, err := auth.HashPassword(password)
+	if err != nil {
+		return "", err
+	}
+	err = s.withTimeout(func(db *gorm.DB) error {
+		return s.db.Model(&models.User{}).
+			Where("email = ?", email).
+			Update("password", hashedPassword).
+			Error
+	})
+
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return "", fmt.Errorf("%s", err)
+		}
+		return "", err
+	}
+	return "password updated successfully", nil
+}
 
 func (s *Store) LoggingUser(id uint64) error {
 	var user models.User
@@ -51,7 +105,7 @@ func (s *Store) LoggingUser(id uint64) error {
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return fmt.Errorf("%s", err)
-		}	
+		}
 		return err
 	}
 	return nil
@@ -66,7 +120,7 @@ func (s *Store) LogOutUser(id int16) error {
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return fmt.Errorf("%s", err)
-		}	
+		}
 		return err
 	}
 	return nil
@@ -88,7 +142,7 @@ func (s *Store) InsertOTP(user models.User, otp string) error {
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return fmt.Errorf("%s", err)
-		}	
+		}
 		return err
 	}
 	return nil
@@ -104,15 +158,15 @@ func (s *Store) UpdateUserById(id uint64, userUpdates models.User) (*models.User
 
 	// Update only the provided fields
 	err := s.withTimeout(func(db *gorm.DB) error {
-		return db.Model(&user).Updates(userUpdates).Error;
+		return db.Model(&user).Updates(userUpdates).Error
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			return nil,fmt.Errorf("%s", err)
-		}	
+			return nil, fmt.Errorf("%s", err)
+		}
 		return nil, err
 	}
-	
+
 	// Return the updated user
 	return &user, nil
 }
@@ -123,25 +177,36 @@ func (s *Store) DeleteUserById(id uint64) (string, error) {
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			return "",fmt.Errorf("%s", err)
-		}	
+			return "", fmt.Errorf("%s", err)
+		}
 		return "", err
 	}
-	
+
 	return "User deleted successfully", nil
 }
 
-func (s *Store) CreateUser(user models.User) (*models.User, error) {
+func (s *Store) CreateUser(user models.User) (*types.RegisterUserResponse, error) {
 	err := s.withTimeout(func(db *gorm.DB) error {
-		return s.db.Create(&user).Error;
+		return s.db.Create(&user).Error
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			return nil, fmt.Errorf("failed to create the user %s",err)
-		}	
+			return nil, fmt.Errorf("failed to create the user %s", err)
+		}
 		return nil, err
-	}	
-	return &user, nil
+	}
+	// Return only the desired fields
+	response := &types.RegisterUserResponse{
+		ID:           user.ID,
+		FirstName:    user.FirstName,
+		Email:        user.Email,
+		LastName:     user.LastName,
+		ProfileImage: user.ProfileImage,
+		PhoneNumber:  user.PhoneNumber,
+	}
+
+	return response, nil
+	// return &user, nil
 }
 
 func (s *Store) CreateAddress(address types.Address) (*models.User, error) {
@@ -201,18 +266,5 @@ func (s *Store) GetUserByEmail(email string) (*models.User, error) {
 		return nil, err
 	}
 	// Return the found user
-	return &user, nil
-}
-
-func (s *Store) GetUserById(id int16) (*models.User, error) {
-	var user models.User
-
-	err := s.db.First(&user, id).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("user not found")
-		}
-		return nil, err
-	}
 	return &user, nil
 }

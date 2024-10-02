@@ -32,13 +32,29 @@ func NewHandler(store types.UserStore) *Handler {
 func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/login", h.handleLogin).Methods(http.MethodPost)
 	router.HandleFunc("/register", h.register).Methods(http.MethodPost)
-	router.HandleFunc("/address", auth.WithJWTAuth(h.shippingAddress, h.store)).Methods(http.MethodPost)
+	router.HandleFunc("/address", auth.WithJWTAuth(h.addAddress, h.store)).Methods(http.MethodPost)
 	router.HandleFunc("/profile", auth.WithJWTAuth(h.GetUserById, h.store)).Methods(http.MethodGet)
 	router.HandleFunc("/remove", auth.WithJWTAuth(h.DeleteUserById, h.store)).Methods(http.MethodDelete)
 	router.HandleFunc("/update", auth.WithJWTAuth(h.UpdateUser, h.store)).Methods(http.MethodPut)
 	router.HandleFunc("/forgetPassword", h.ForgetUserPassword).Methods(http.MethodPost)
+	router.HandleFunc("/updatePassword", h.UpdateUserPassword).Methods(http.MethodPut)
+	router.HandleFunc("/checkOTP", h.CheckOTP).Methods(http.MethodPost)
 	router.HandleFunc("/generateAccessToken", h.GenerateAccessToken).Methods(http.MethodPost)
 	router.HandleFunc("/logout", h.LogoutUser).Methods(http.MethodDelete)
+}
+
+func (h *Handler) CheckOTP(w http.ResponseWriter, r *http.Request) {
+	var creds types.CheckOTPPayload
+	if err := utils.ParseJSON(r, &creds); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+	status, err := h.store.CheckOTPByEmail(creds.Email, creds.OTP)
+	if !status {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("%s", err))
+		return
+	}
+	utils.WriteJSON(w, http.StatusBadRequest, map[string]bool{"status": status})
 }
 
 func (h *Handler) LogoutUser(w http.ResponseWriter, r *http.Request) {
@@ -88,6 +104,30 @@ func (h *Handler) GenerateAccessToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{"message": "Access Token created successfully", "accessToken": accessToken})
+}
+
+func (h *Handler) UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
+	var creds types.UpdatePasswordCreds
+	if err := utils.ParseJSON(r, &creds); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+	if err := utils.Validate.Struct(creds); err != nil {
+		errors := err.(validator.ValidationErrors)
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload: %v", errors))
+		return
+	}
+	if creds.Password != creds.ConfirmPassword {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("confirmed Password is not mathching"))
+		return
+	}
+
+	message, err := h.store.UpdatePasswordByEmail(creds.Password, creds.Email)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("not able to update password %s", err))
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, map[string]string{"status": "SUCCESS", "message": message})
 }
 
 func (h *Handler) ForgetUserPassword(w http.ResponseWriter, r *http.Request) {
@@ -145,7 +185,7 @@ func (h *Handler) ForgetUserPassword(w http.ResponseWriter, r *http.Request) {
 	// Handle any errors that occurred in the first two operations
 	for err := range errChan {
 		if err != nil {
-			utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "An error occurred, please try again"})
+			utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"email": email, "error": "An error occurred, please try again"})
 			return
 		}
 	}
@@ -173,7 +213,7 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, user)
 }
 
-func (h *Handler) shippingAddress(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) addAddress(w http.ResponseWriter, r *http.Request) {
 	//Taking userId from middleware
 	userID, ok := r.Context().Value(auth.UserKey).(uint64)
 	if !ok {
@@ -209,12 +249,20 @@ func (h *Handler) GetUserById(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("user ID is missing or of incorrect type"))
 		return
 	}
-	err, user := h.store.GetUserById(int16(userID))
+	user, err := h.store.GetUserById(int16(userID))
 	if err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "register user not found"})
+		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "user not found"})
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, user)
+	userMap := map[string]interface{}{
+		"id":            user.ID,
+		"first_name":    user.FirstName,
+		"last_name":     user.LastName,
+		"email":         user.Email,
+		"profile_image": user.ProfileImage,
+		"phone_number":  user.PhoneNumber,
+	}
+	utils.WriteJSON(w, http.StatusOK, userMap)
 }
 
 func (h *Handler) DeleteUserById(w http.ResponseWriter, r *http.Request) {
@@ -261,7 +309,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Email already exists please try to Login"})
 		return
 	}
-
+	var checkFile bool
 	//Checking Profile Image exists from request
 	file, handler, err := r.FormFile("profile_image")
 	if err != nil {
@@ -273,6 +321,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 			PhoneNumber:  r.FormValue("phone"),
 			Email:        r.FormValue("email"),
 		}
+		checkFile = false
 	} else {
 		defer file.Close()
 		// Create a unique file name and save the file
@@ -281,26 +330,6 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		//generate unique file name
 		fileName := fmt.Sprintf("%d_%s", time.Now().Unix(), handler.Filename)
 		filePath = filepath.Join(folderPath, fileName)
-
-		//Ensure folder exists
-		if _, err := os.Stat(folderPath); os.IsNotExist(err) {
-			os.MkdirAll(folderPath, os.ModePerm)
-		}
-
-		//Creating a file in path of folder
-		out, err := os.Create(filePath)
-		if err != nil {
-			utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "not able to create a file"})
-			return
-		}
-		defer out.Close()
-
-		//write a file content to a new file
-		_, err = io.Copy(out, file)
-		if err != nil {
-			utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "not able to create a file"})
-			return
-		}
 
 		//create a user Modal
 		user = models.User{
@@ -311,6 +340,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 			PhoneNumber:  r.FormValue("phone"),
 			Email:        r.FormValue("email"),
 		}
+		checkFile = true
 	}
 
 	// hash password
@@ -331,13 +361,32 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if checkFile {
+		// Creating a file in path of folder
+		out, err := os.Create(filePath)
+		if err != nil {
+			utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "not able to create a file"})
+			return
+		}
+		defer out.Close()
+
+		// write a file content to a new file
+		_, err = io.Copy(out, file)
+		if err != nil {
+			utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "not able to create a file"})
+			return
+		}
+	}
+
 	accessToken, refreshToken, err := auth.GenerateTokens(Userprofile.ID, h.store)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		os.Remove(filePath)
 		return
 	}
-	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{"user": Userprofile, "accessToken": accessToken, "refreshToken": refreshToken})
+	Userprofile.AccessToken = accessToken
+	Userprofile.RefreshToken = refreshToken
+	utils.WriteJSON(w, http.StatusCreated, Userprofile)
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {

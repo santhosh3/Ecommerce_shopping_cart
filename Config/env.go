@@ -20,6 +20,8 @@ type Config struct {
 	AccessJWTExpirationInSeconds  int64
 	RefreshJWTExpirationInSeconds int64
 	RedisDB                       string
+	GrpcPort                      string
+	KafkaPort                     string
 }
 
 type getDataFromEnv interface {
@@ -63,11 +65,13 @@ var Envs = initConfig()
 func initConfig() Config {
 	godotenv.Load()
 
-	// DB := postgresql://postgres:postgres@db:5432/postgres?sslmode=disable
-	DB := "postgresql://postgres:postgres@localhost:5433/postgres?sslmode=disable"
-	RedisDB := getStringStruct{key : "REDIS_DB", fallback: "localhost:6379"}
+	//DB := "postgresql://postgres:postgres@db:5432/postgres?sslmode=disable"
+	DB := "postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable"
+	RedisDB := getStringStruct{key: "REDIS_DB", fallback: "localhost:6379"}
+	grpcPort := getStringStruct{key: "GRPC_PORT", fallback: "50051"}
+	kafkaPort := getStringStruct{key: "KAFKA_PORT", fallback: "29092"}
 	host := getStringStruct{key: "PUBLIC_HOST", fallback: "http://localhost"}
-	port := getStringStruct{key: "PORT", fallback: "3501"}
+	port := getStringStruct{key: "PORT", fallback: "3500"}
 	AccessJWTSecret := getStringStruct{key: "ACCESS_JWT_SECRET", fallback: "ACCESSTOKEN"}
 	RefreshJWTSecret := getStringStruct{key: "REFRESH_JWT_SECRET", fallback: "REFRESHTOKEN"}
 	PostgresString := getStringStruct{key: "POSTGRES_SQL", fallback: DB}
@@ -91,5 +95,7 @@ func initConfig() Config {
 		RefreshJWTExpirationInSeconds: getEnvProd(RefreshJWTExpirationInSeconds).(int64),
 		AccessJWTExpirationInSeconds:  getEnvProd(AccessJWTExpirationInSeconds).(int64),
 		RedisDB:                       getEnvProd(RedisDB).(string),
+		GrpcPort:                      getEnvProd(grpcPort).(string),
+		KafkaPort:                     getEnvProd(kafkaPort).(string),
 	}
 }
